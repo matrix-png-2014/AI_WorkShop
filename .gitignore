@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local npm cache (project-specific, see README)
+.npm-cache/
+.npmrc
+
+# OS / editor
+.DS_Store
+
+# WorkBuddy internal
+.dsh-uploads/
+
+# Large archive (1.4 GB) — excluded from git
+*.zip
+归档.zip
+
+# Secrets — never commit
+admin-password*.txt
