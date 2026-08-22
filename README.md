@@ -1,5 +1,6 @@
 # MetaStore Skeleton · 元宇宙 3D 线上商店骨架系统
-
+---
+### 朱一航的项目
 > Three.js r160+ · Vite · 原生 CSS / CSS2DRenderer / CSS3DRenderer
 > 高扩展性骨架：**严禁以球体/立方体等几何体代替商品** —— 商品全部通过 URL 导入 glTF/GLB，
 > 加载前以 GridHelper + Box3Helper 占位，放入模型文件即可直接运行。
