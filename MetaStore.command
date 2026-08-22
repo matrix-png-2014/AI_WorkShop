@@ -14,7 +14,8 @@
 # ============================================================================
 
 # 定位到脚本所在目录（.command 双击时工作目录是用户主目录，必须显式切换）
-cd "$(dirname "$0")" || { echo "❌ 无法进入项目目录"; exit 1; }
+# 单房间展厅项目实际位于 matrix life/MetaStore Skeleton/，直接进入该目录启动
+cd "$(dirname "$0")/matrix life/MetaStore Skeleton" || { echo "❌ 无法进入项目目录 matrix life/MetaStore Skeleton"; exit 1; }
 
 # 端口可经命令行参数覆盖，默认 5173（与 vite.config.js 的 server.port 一致）
 PORT="${1:-5173}"
