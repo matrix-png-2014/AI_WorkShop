@@ -10,6 +10,7 @@
  */
 
 import { Typewriter } from '../utils/Typewriter.js';
+import { TTS } from '../utils/TTS.js';
 
 /**
  * 展区讲解面板。
@@ -40,7 +41,7 @@ export class GuidePanel {
   }
 
   /**
-   * 打开讲解面板并关联商品。
+   * 打开讲解面板并关联商品（同时触发 TTS 朗读开场白）。
    * @param {import('../world/ExhibitManager.js').ExhibitProduct} product
    */
   open(product) {
@@ -51,12 +52,18 @@ export class GuidePanel {
     this._wasLocked = this.fps?.locked ?? false;
     this.fps?.unlock();
     this._shuffleChoices();
+    // 立即朗读开场白（让 TTS 在用户点「讲解」那一刻就出声）
+    const d = product.descriptor;
+    TTS.instance.speak(
+      `这是${d.name}，售价${d.price}。${d.desc || ''}点下面的问题，我来为你详细讲解。`
+    );
   }
 
   /**
-   * 关闭面板。
+   * 关闭面板（同时停掉 TTS 朗读）。
    */
   close() {
+    TTS.instance.cancel();
     this.root.classList.remove('visible');
     this.currentProduct = null;
     if (this._wasLocked) {
@@ -122,7 +129,7 @@ export class GuidePanel {
   }
 
   /**
-   * 展示所选选项的回答（打字机）。
+   * 展示所选选项的回答（打字机 + TTS 朗读）。
    * @param {Object} choice
    * @private
    */
@@ -137,6 +144,10 @@ export class GuidePanel {
     const answer = document.createElement('div');
     answer.className = 'guide-answer';
     this.body.appendChild(answer);
+
+    // 立即启动 TTS 朗读完整答案（在 click handler 同步阶段调用，保留 user gesture）
+    TTS.instance.cancel();
+    TTS.instance.speak(choice.answer);
 
     this._typewriter?.removeCursor();
     this._typewriter = new Typewriter(answer, { speedMs: 22 });

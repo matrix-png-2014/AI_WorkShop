@@ -353,9 +353,13 @@ body {
 
 .typewriter-cursor {
   display: inline-block;
-  width: 7px;
-  color: #5ad1ff;
-  animation: blink 0.8s steps(1) infinite;
+  width: 2px;
+  height: 1.1em;
+  margin: 0 1px;
+  background: #5ad1ff;
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  animation: blink 0.9s steps(1) infinite;
 }
 
 @keyframes blink {

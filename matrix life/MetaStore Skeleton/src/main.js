@@ -107,29 +107,10 @@ async function bootstrap() {
     const hit = exhibit.hitTest(input.createRaycaster(ndc.x, ndc.y).ray);
     if (!hit) return;
 
-    if (hit.type === 'door') {
-      // 街上点击店门 -> 进入店铺
-      audio.playUI(true);
-      exhibit.enterShop(hit.target);
-      return;
-    }
-    if (hit.type === 'exit-shop') {
-      // 店内点击门洞 -> 出店
-      audio.playUI(false);
-      exhibit.exitShop();
-      return;
-    }
-    if (hit.type === 'exit-street') {
-      // 街口出口 -> 退出商店
-      if (confirm('确定要离开商店吗？')) {
-        audio.playPortal();
-        showExitScreen();
-      }
-      return;
-    }
+    // 单屋架构：准星照中商品 -> 打开讲解面板（含 TTS 朗读）
     if (hit.type === 'product') {
       audio.playPickup();
-      guide.open(hit.target); // 准星命中商品 -> 打开讲解面板
+      guide.open(hit.target);
     }
   });
 
@@ -152,37 +133,17 @@ async function bootstrap() {
   });
 
   /**
-   * Gaze 目标（陀螺仪移动端）：
-   * - 街上：商品（室内视）-> 进店讲解；店门 -> 进店
-   * - 店内：商品 -> 讲解；门洞 -> 出店
-   * - 街口出口 -> 退出
+   * Gaze 目标（陀螺仪移动端）：单屋架构下注视任意商品即讲解。
    * @returns {Array<{hitTest: Function, onGaze?: Function}>}
    */
   function buildGazeTargets() {
     const targets = [];
-
-    if (exhibit.navZone === 'inside' && exhibit.currentShop) {
-      // 店内：商品 + 出店门
-      const p = exhibit.currentShop.product;
-      targets.push({ hitTest: (ray) => p?.hitTest(ray) ?? false, onGaze: () => { audio.playPickup(); guide.open(p); } });
-      targets.push({ hitTest: (ray) => ray.intersectBox(exhibit.currentShop.doorZone, new THREE.Vector3()) !== null, onGaze: () => exhibit.exitShop() });
-      return targets;
-    }
-
-    // 街上：各店门 + 出口
-    for (const shop of exhibit.layout.shops) {
+    for (const p of exhibit.products) {
       targets.push({
-        hitTest: (ray) => ray.intersectBox(shop.doorZone, new THREE.Vector3()) !== null,
-        onGaze: () => { audio.playUI(true); exhibit.enterShop(shop); },
+        hitTest: (ray) => p?.hitTest(ray) ?? false,
+        onGaze: () => { audio.playPickup(); guide.open(p); },
       });
     }
-    // 街口出口
-    targets.push({
-      hitTest: (ray) => ray.intersectBox(
-        new THREE.Box3(
-          new THREE.Vector3(-2, 0, 22), new THREE.Vector3(2, 3, 23)), new THREE.Vector3()) !== null,
-      onGaze: () => { audio.playPortal(); showExitScreen(); },
-    });
     return targets;
   }
 

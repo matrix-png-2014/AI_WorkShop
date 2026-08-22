@@ -19,9 +19,11 @@ export class Typewriter {
     this._timer = 0;
     this._cursor = null;
     if (showCursor) {
+      // 用纯 CSS 绘制的光标（2px 蓝色竖条），不依赖任何字体字形，
+      // 避免在缺少「▍」之类字形时回退成实心方块（即用户看到的「实心正方体」）。
       this._cursor = document.createElement('span');
       this._cursor.className = 'typewriter-cursor';
-      this._cursor.textContent = '▍';
+      this._cursor.setAttribute('aria-hidden', 'true');
     }
   }
 

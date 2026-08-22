@@ -40,51 +40,16 @@ export class UIManager {
   }
 
   /**
-   * 为街店展陈系统重建全部标签：
-   * - 每家店门面一块招牌（CSS2D，显示店名，朝街可见）
-   * - 每家店门口一个「进入」标签
-   * - 每个商品挂讲解面板（店内可见）
+   * 为单屋展厅系统重建全部标签：
+   * - 每个商品挂一块讲解面板（CSS2D，悬浮在商品上方）
+   * 单屋架构下不再有"店面招牌 / 店门标签 / 街口出口"
    * @param {import('../world/ExhibitManager.js').ExhibitManager} exhibit
    */
   rebuild(exhibit) {
     this.clear();
     if (!exhibit) return;
 
-    // 商店门面招牌 + 进入标签
-    for (const shop of exhibit.layout.shops) {
-      // 招牌（门楣上方）
-      const sign = this._createShopSign(shop);
-      if (shop.facade) {
-        // 挂到门面坐标：招牌板在门面偏上
-        const obj = new CSS2DObject(sign.element);
-        obj.name = `shop-sign:${shop.id}`;
-        obj.position.set(shop.facade.position[0], 3.4, shop.facade.position[2]);
-        obj.rotation.set(0, shop.facade.rotation[1], 0);
-        this.scene.add(obj);
-        this.labels.push(obj);
-        this._shopSigns.set(shop.id, obj);
-
-        // 进入标签（门洞上方）
-        const enter = this._createEnterLabel(shop);
-        const enterObj = new CSS2DObject(enter.element);
-        enterObj.name = `shop-enter:${shop.id}`;
-        enterObj.position.set(shop.door.position[0], 2.0, shop.door.position[2]);
-        enterObj.rotation.set(0, shop.facade.rotation[1], 0);
-        this.scene.add(enterObj);
-        this.labels.push(enterObj);
-        this._enterLabels.set(shop.id, enterObj);
-      }
-    }
-
-    // 街口出口标签
-    const exitEl = this._createExitLabel();
-    const exitObj = new CSS2DObject(exitEl.element);
-    exitObj.name = 'street-exit';
-    exitObj.position.set(0, 2.6, exhibit.layout.door.position[2] - 0.5);
-    this.scene.add(exitObj);
-    this.labels.push(exitObj);
-
-    // 商品面板（挂在商品上）
+    // 商品面板（挂在商品上方）
     for (const product of exhibit.products) {
       const label = this._createProductLabel(product);
       product.root.add(label);
