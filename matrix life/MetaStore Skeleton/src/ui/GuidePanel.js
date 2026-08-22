@@ -11,6 +11,7 @@
 
 import { Typewriter } from '../utils/Typewriter.js';
 import { TTS } from '../utils/TTS.js';
+import { ProcessAnim } from './ProcessAnim.js';
 
 /**
  * 展区讲解面板。
@@ -36,6 +37,9 @@ export class GuidePanel {
 
     /** 打字机 */
     this._typewriter = null;
+
+    /** 当前过程动画（ProcessAnim 实例），无则 null */
+    this._anim = null;
 
     this._bind();
   }
@@ -64,6 +68,7 @@ export class GuidePanel {
    */
   close() {
     TTS.instance.cancel();
+    this._stopAnim();
     this.root.classList.remove('visible');
     this.currentProduct = null;
     if (this._wasLocked) {
@@ -136,10 +141,28 @@ export class GuidePanel {
   async _showAnswer(choice) {
     // 移除选项按钮，仅保留回答区
     this.body.innerHTML = '';
+    this._stopAnim();
     const qLine = document.createElement('div');
     qLine.className = 'guide-q';
     qLine.textContent = choice.label.replace(/^\S+\s/, ''); // 去掉 emoji 前缀
     this.body.appendChild(qLine);
+
+    // 若该选项带有过程动画，在回答文字上方插入一段循环动画
+    if (choice.animation) {
+      const wrap = document.createElement('div');
+      wrap.className = 'guide-anim-wrap';
+      const canvas = document.createElement('canvas');
+      canvas.className = 'guide-anim';
+      wrap.appendChild(canvas);
+      const cap = document.createElement('div');
+      cap.className = 'guide-anim-cap';
+      cap.textContent = choice.animCaption || '▸ 过程演示';
+      wrap.appendChild(cap);
+      this.body.appendChild(wrap);
+      // 等布局完成再测量尺寸并启动
+      this._anim = new ProcessAnim(canvas, choice.animation, choice.animOpts || {});
+      requestAnimationFrame(() => this._anim?.start());
+    }
 
     const answer = document.createElement('div');
     answer.className = 'guide-answer';
@@ -170,5 +193,16 @@ export class GuidePanel {
   _bind() {
     this.btnClose.addEventListener('click', () => this.close());
     this.btnShuffle.addEventListener('click', () => this._shuffleChoices());
+  }
+
+  /**
+   * 停止并销毁当前过程动画。
+   * @private
+   */
+  _stopAnim() {
+    if (this._anim) {
+      this._anim.stop();
+      this._anim = null;
+    }
   }
 }
