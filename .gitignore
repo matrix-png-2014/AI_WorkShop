@@ -13,6 +13,8 @@ dist/
 
 # WorkBuddy internal
 .dsh-uploads/
+.workbuddy/
+.vite/
 
 # Large archive (1.4 GB) — excluded from git
 *.zip

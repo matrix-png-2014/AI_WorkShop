@@ -1,0 +1,1094 @@
+/* ==========================================================================
+   MetaStore Skeleton — 全局样式（原生 CSS）
+   分层：
+   1. 基础重置与布局
+   2. 渲染层（canvas / CSS2D / CSS3D 覆盖层）
+   3. 空间 UI 面板（CSS2D 商品/传送门标签）
+   4. 屏幕空间聊天窗口
+   5. HUD / 准星 / 加载遮罩 / 淡入淡出遮罩
+   6. 响应式
+   ========================================================================== */
+
+/* ---------- 1. 基础重置与布局 ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0d12;
+  color: #e8ecf4;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#webgl-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- 2. 渲染覆盖层 ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* 覆盖层默认不拦截事件，仅面板自身可交互 */
+}
+
+.overlay-css2d {
+  overflow: hidden;
+}
+
+.overlay-css3d {
+  overflow: hidden;
+}
+
+.css3d-note {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #5ad1ff;
+  border: 1px dashed rgba(90, 209, 255, 0.4);
+  border-radius: 999px;
+  background: rgba(11, 13, 18, 0.6);
+  opacity: 0;
+  transition: opacity 0.6s;
+  z-index: 40;
+}
+
+.css3d-note.visible {
+  opacity: 1;
+}
+
+/* CSS3D 场景标牌（CSS3DRenderer 演示层） */
+.css3d-sign {
+  padding: 14px 34px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(20, 30, 48, 0.92), rgba(10, 16, 28, 0.92));
+  border: 1px solid rgba(90, 209, 255, 0.55);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 24px rgba(90, 209, 255, 0.18);
+  color: #bce7ff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ---------- 3. 空间 UI 面板（CSS2D） ---------- */
+.spatial-panel {
+  pointer-events: auto;
+  min-width: 150px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(18, 22, 32, 0.88);
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: default;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transform-origin: 50% 100%;
+}
+
+.spatial-panel:hover {
+  border-color: rgba(90, 209, 255, 0.7);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(90, 209, 255, 0.25);
+}
+
+.product-panel {
+  text-align: center;
+}
+
+.p-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.p-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #f2f6ff;
+}
+
+.p-state {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(120, 140, 180, 0.2);
+  color: #9fb0cc;
+}
+
+.p-state-loading {
+  background: rgba(255, 190, 60, 0.18);
+  color: #ffc45c;
+}
+
+.p-state-ready {
+  background: rgba(62, 207, 142, 0.18);
+  color: #3ecf8e;
+}
+
+.p-state-error {
+  background: rgba(255, 96, 96, 0.18);
+  color: #ff7a7a;
+}
+
+.p-price {
+  margin-top: 3px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.p-progress {
+  height: 4px;
+  margin: 8px 0 10px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.p-progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #3ecf8e, #5ad1ff);
+  transition: width 0.3s ease;
+}
+
+.panel-ready .p-progress,
+.panel-error .p-progress {
+  display: none;
+}
+
+.p-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.p-btn {
+  flex: 1;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #cfe3ff;
+  background: rgba(90, 160, 255, 0.12);
+  border: 1px solid rgba(90, 160, 255, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.p-btn:hover {
+  background: rgba(90, 160, 255, 0.25);
+}
+
+.p-btn:active {
+  transform: scale(0.96);
+}
+
+.p-btn-primary {
+  background: linear-gradient(135deg, #3ecf8e, #2fa9c8);
+  border-color: transparent;
+  color: #06231c;
+  font-weight: 600;
+}
+
+.p-btn-primary:hover {
+  filter: brightness(1.12);
+}
+
+.panel-error {
+  border-color: rgba(255, 96, 96, 0.55);
+}
+
+.portal-panel {
+  min-width: 170px;
+  text-align: center;
+  background: rgba(11, 26, 38, 0.85);
+  border-color: rgba(90, 209, 255, 0.45);
+  cursor: pointer;
+}
+
+.portal-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #8fdcff;
+}
+
+.portal-hint {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #6b8ca6;
+}
+
+/* ---------- 4. 屏幕空间聊天窗口 ---------- */
+.chat-root {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: min(380px, calc(100vw - 36px));
+  height: min(520px, calc(100vh - 100px));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: rgba(15, 19, 28, 0.94);
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+  animation: chat-in 0.28s ease;
+}
+
+.chat-root[hidden] {
+  display: none; /* 必须覆盖 display:flex，否则 hidden 属性失效 */
+}
+
+@keyframes chat-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(90, 209, 255, 0.16), rgba(62, 207, 142, 0.1));
+  border-bottom: 1px solid rgba(120, 140, 180, 0.2);
+}
+
+.chat-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #9fdcff;
+}
+
+.chat-close {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cfe3ff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chat-close:hover {
+  background: rgba(255, 96, 96, 0.3);
+}
+
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+
+.chat-msg {
+  display: flex;
+}
+
+.chat-user {
+  justify-content: flex-end;
+}
+
+.chat-assistant {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 82%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-user .chat-bubble {
+  background: linear-gradient(135deg, #2fa9c8, #3ecf8e);
+  color: #05231c;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-assistant .chat-bubble {
+  background: rgba(120, 140, 180, 0.16);
+  color: #e6edf8;
+  border-bottom-left-radius: 4px;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 7px;
+  color: #5ad1ff;
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(120, 140, 180, 0.18);
+}
+
+.chat-input {
+  flex: 1;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  background: rgba(8, 11, 17, 0.7);
+  color: #eef3fb;
+  font-size: 13px;
+  outline: none;
+}
+
+.chat-input:focus {
+  border-color: #5ad1ff;
+}
+
+.chat-input::placeholder {
+  color: #5d6f8c;
+}
+
+.chat-send {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3ecf8e, #2fa9c8);
+  color: #06231c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-send:hover {
+  filter: brightness(1.1);
+}
+
+/* ---------- 5. HUD / 准星 / 遮罩 ---------- */
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.hud-top-left {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(11, 13, 18, 0.62);
+  border: 1px solid rgba(120, 140, 180, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.scene-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #eef3fb;
+  letter-spacing: 0.5px;
+}
+
+.scene-hint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #7d91b0;
+}
+
+.hud-top-right {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.hud-btn {
+  pointer-events: auto;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  background: rgba(11, 13, 18, 0.62);
+  color: #cfe3ff;
+  font-size: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.hud-btn:hover {
+  border-color: #5ad1ff;
+  background: rgba(20, 26, 40, 0.75);
+}
+
+.hud-btn-warn {
+  color: #ffc45c;
+  border-color: rgba(255, 196, 92, 0.5);
+  animation: pulse-warn 1.6s ease infinite;
+}
+
+@keyframes pulse-warn {
+  50% {
+    box-shadow: 0 0 12px rgba(255, 196, 92, 0.35);
+  }
+}
+
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.crosshair.visible {
+  opacity: 1;
+}
+
+.crosshair-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(90, 209, 255, 0.75);
+  box-shadow: 0 0 10px rgba(90, 209, 255, 0.35);
+}
+
+.crosshair-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #5ad1ff;
+}
+
+.stats-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+}
+
+/* 淡入淡出遮罩（场景传送） */
+.fade-overlay {
+  position: fixed;
+  inset: 0;
+  background: #05070b;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 90;
+}
+
+.fade-overlay.fade-active {
+  pointer-events: auto;
+}
+
+/* 全局加载遮罩 */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 11, 0.88);
+  z-index: 80;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.loading-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loading-card {
+  width: min(340px, 82vw);
+  padding: 26px 28px;
+  border-radius: 16px;
+  background: rgba(18, 22, 32, 0.95);
+  border: 1px solid rgba(120, 140, 180, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.loading-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #cfe3ff;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.loading-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.loading-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #3ecf8e, #5ad1ff, #8f6bff);
+  background-size: 200% 100%;
+  animation: bar-flow 1.8s linear infinite;
+  transition: width 0.25s ease;
+}
+
+@keyframes bar-flow {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.loading-text {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #7d91b0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 6. 响应式 ---------- */
+@media (max-width: 640px) {
+  .chat-root {
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 62vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .hud-top-left {
+    top: 10px;
+    left: 10px;
+    padding: 8px 12px;
+  }
+
+  .hud-top-right {
+    top: 10px;
+    right: 10px;
+  }
+
+  .hud-btn {
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .spatial-panel {
+    min-width: 128px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
+   7. 第一人称展厅：开始界面 / ESC 菜单 / 管理员面板 / 退出页
+   ========================================================================== */
+
+/* ---------- 开始界面与退出页 ---------- */
+.start-overlay,
+.exit-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(14, 20, 32, 0.92), rgba(5, 7, 11, 0.97));
+  z-index: 95; /* 必须高于加载遮罩(80)，否则资源加载中无法点击进入 */
+  opacity: 0;
+  visibility: hidden; /* 隐藏时子元素（按钮）也不可命中 */
+  transition: opacity 0.5s, visibility 0s linear 0.5s;
+}
+
+.start-overlay.visible,
+.exit-screen.visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.5s;
+}
+
+.start-card {
+  width: min(420px, 86vw);
+  padding: 40px 36px;
+  border-radius: 20px;
+  text-align: center;
+  background: rgba(18, 22, 32, 0.95);
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.start-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #3ecf8e, #5ad1ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.start-sub {
+  margin: 12px 0 26px;
+  font-size: 13px;
+  color: #8fa3c0;
+}
+
+.start-btn {
+  display: inline-block;
+  padding: 12px 44px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3ecf8e, #2fa9c8);
+  border: none;
+  color: #06231c;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.start-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.start-hint {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #5d6f8c;
+}
+
+/* ---------- ESC 菜单 ---------- */
+.escape-menu {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 11, 0.66);
+  z-index: 65;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s, visibility 0s linear 0.25s;
+  backdrop-filter: blur(4px);
+}
+
+.escape-menu.visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s;
+}
+
+.escape-card {
+  width: min(340px, 84vw);
+  padding: 26px 24px;
+  border-radius: 18px;
+  background: rgba(18, 22, 32, 0.96);
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.escape-title {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  color: #eef3fb;
+  margin-bottom: 6px;
+  letter-spacing: 4px;
+}
+
+.menu-btn {
+  padding: 12px 16px;
+  font-size: 14px;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.menu-btn-sm {
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.menu-btn-primary {
+  background: linear-gradient(135deg, #3ecf8e, #2fa9c8);
+  border-color: transparent;
+  color: #06231c;
+  font-weight: 600;
+}
+
+.menu-btn-danger {
+  color: #ff8f8f;
+  border-color: rgba(255, 96, 96, 0.45);
+}
+
+.menu-btn-danger:hover {
+  border-color: #ff6b5a;
+  background: rgba(255, 96, 96, 0.14);
+}
+
+/* ---------- 管理员密码面板 ---------- */
+.pwd-panel {
+  margin-top: 6px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(8, 11, 17, 0.6);
+  border: 1px solid rgba(120, 140, 180, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pwd-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffc45c;
+}
+
+.pwd-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  background: rgba(5, 8, 14, 0.8);
+  color: #eef3fb;
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+  outline: none;
+}
+
+.pwd-input:focus {
+  border-color: #ffc45c;
+}
+
+.pwd-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pwd-actions .menu-btn {
+  flex: 1;
+  text-align: center;
+}
+
+.pwd-msg {
+  font-size: 12px;
+  color: #9fb0cc;
+  min-height: 16px;
+}
+
+/* ---------- 管理员模式面板 ---------- */
+.admin-panel {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 62;
+  width: min(330px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-16px);
+  transition: opacity 0.25s, transform 0.25s, visibility 0s linear 0.25s;
+}
+
+.admin-panel.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.admin-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(15, 19, 28, 0.95);
+  border: 1px solid rgba(90, 209, 255, 0.4);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #8fdcff;
+}
+
+.admin-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-label {
+  font-size: 12px;
+  color: #7d91b0;
+  white-space: nowrap;
+}
+
+.admin-select,
+.admin-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  background: rgba(5, 8, 14, 0.8);
+  color: #eef3fb;
+  font-size: 12px;
+  outline: none;
+}
+
+.admin-select:focus,
+.admin-input:focus {
+  border-color: #5ad1ff;
+}
+
+.admin-input:disabled {
+  opacity: 0.45;
+}
+
+.admin-input-sm {
+  flex: 0 0 96px;
+}
+
+.admin-desc {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.admin-info {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(90, 209, 255, 0.08);
+  border: 1px dashed rgba(90, 209, 255, 0.35);
+  font-size: 12px;
+  color: #bde4ff;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.admin-hint {
+  font-size: 11px;
+  color: #5d6f8c;
+  line-height: 1.6;
+}
+
+.admin-hint-msg {
+  color: #3ecf8e;
+  min-height: 16px;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-actions .menu-btn {
+  flex: 1;
+  text-align: center;
+}
+
+/* ---------- 聊天窗口演示图 ---------- */
+.chat-bubble-poster {
+  padding: 10px;
+  max-width: 90%;
+}
+
+.chat-poster-img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 140, 180, 0.3);
+  background: #0b0d12;
+}
+
+.chat-poster-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #aebfda;
+  line-height: 1.6;
+}
+
+/* ---------- 移动端菜单按钮 ---------- */
+.hud-btn-mobile {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .hud-btn-mobile {
+    display: inline-block;
+  }
+}
+
+/* ---------- 展区讲解面板（三选一） ---------- */
+.guide-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: min(380px, calc(100vw - 36px));
+  max-height: calc(100vh - 100px);
+  z-index: 60;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(24px);
+  transition: opacity 0.25s, transform 0.25s, visibility 0s linear 0.25s;
+}
+
+.guide-panel.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
+  border-radius: 16px;
+  background: rgba(15, 19, 28, 0.96);
+  border: 1px solid rgba(120, 140, 180, 0.4);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), rgba(90, 209, 255, 0.1));
+  border-bottom: 1px solid rgba(120, 140, 180, 0.2);
+}
+
+.guide-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.guide-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 120px;
+}
+
+.guide-ask {
+  font-size: 13px;
+  color: #bde4ff;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.guide-option {
+  text-align: left;
+  font-size: 13px;
+  background: rgba(90, 160, 255, 0.1);
+  border: 1px solid rgba(90, 160, 255, 0.35);
+  border-radius: 10px;
+  color: #dbe9ff;
+}
+
+.guide-option:hover {
+  background: rgba(90, 160, 255, 0.22);
+}
+
+.guide-hint {
+  font-size: 11px;
+  color: #5d6f8c;
+}
+
+.guide-q {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd166;
+}
+
+.guide-answer {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #e6edf8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.guide-footer {
+  padding: 10px 12px;
+  border-top: 1px solid rgba(120, 140, 180, 0.18);
+}
+
+.guide-footer .menu-btn {
+  width: 100%;
+  text-align: center;
+}
+
+.guide-empty {
+  font-size: 13px;
+  color: #5d6f8c;
+}
