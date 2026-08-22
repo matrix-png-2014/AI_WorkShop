@@ -393,8 +393,33 @@ function boot(ctx, t, w, h) {
   label(ctx, prog < 0.5 ? '开机中…' : '系统就绪', cx, 22, prog < 0.5 ? AMBER : GREEN, 14);
 }
 
+/** 通用：漂浮展示（用于「来历/故事」等无明确流程的讲解） */
+function float(ctx, t, w, h, opts = {}) {
+  const cx = w / 2, cy = h / 2 + 6;
+  const col = opts.color || PURPLE;
+  const bob = Math.sin(t * 1.4) * 8;
+  ctx.save();
+  ctx.translate(cx, cy + bob);
+  ctx.rotate(t * 0.5);
+  const grad = ctx.createLinearGradient(-30, -42, 30, 42);
+  grad.addColorStop(0, col);
+  grad.addColorStop(1, 'rgba(255,255,255,0.12)');
+  ctx.fillStyle = grad;
+  ctx.shadowColor = col; ctx.shadowBlur = 16;
+  roundRect(ctx, -30, -42, 60, 84, 14); ctx.fill();
+  ctx.restore();
+  for (let i = 0; i < 6; i++) {
+    const a = t * 0.6 + i;
+    const px = cx + Math.cos(a) * 58;
+    const py = cy + Math.sin(a * 1.3) * 28 + bob * 0.3;
+    ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.3 * (Math.sin(a) * 0.5 + 0.5)})`;
+    ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+  label(ctx, opts.name ? `✶ ${opts.name}` : '✶ 漂浮展示', cx, 22, col, 14);
+}
+
 /** kind 注册表 */
-const KINDS = { spin, print3d, brew, scan, assemble, charge, wave, bounce, boot };
+const KINDS = { spin, print3d, brew, scan, assemble, charge, wave, bounce, boot, float };
 
 /**
  * 过程动画控制器。
@@ -460,3 +485,204 @@ export class ProcessAnim {
 }
 
 export default ProcessAnim;
+
+/* ====================================================================== */
+/* 交互式 3D 打印模拟（玩家亲手一层一层打）                                  */
+/* ====================================================================== */
+
+/**
+ * 交互式 3D 打印小模拟。
+ * 玩家点「打印下一层」/ 点画布 / 敲空格，每触发一次就打印一层；
+ * 全部打完后「成型」成一个歪歪扭扭、丑萌的「垃圾」，并通过 onDone 回调播报。
+ *
+ * 设计：
+ * - 纯 Canvas2D，DPR 自适应
+ * - 空闲时喷头悬在「下一层」位置轻轻浮动，提示该点哪
+ * - 打印中播放一次喷头往返挤料的短动画（约 0.55s）
+ * - 完成后整体微微倾斜 + 顶部多一坨「溢料」，呈现手残成品的喜感
+ */
+export class PrinterSim {
+  constructor(canvas, opts = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.total = opts.layers || 14;
+    this.printed = 0;
+    this.done = false;
+    this.t = 0;
+    this.raf = 0;
+    this._running = false;
+    this._last = 0;
+    this._anim = null; // { layer, t, dur }
+    this.onProgress = opts.onProgress || null;
+    this.onDone = opts.onDone || null;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this._resize();
+    this._draw();
+    this.start();
+  }
+
+  _resize() {
+    const r = this.canvas.getBoundingClientRect();
+    const w = Math.max(220, Math.round(r.width || 320));
+    const h = Math.max(150, Math.round(r.height || 200));
+    this.canvas.width = w * this.dpr;
+    this.canvas.height = h * this.dpr;
+    this.w = w;
+    this.h = h;
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  }
+
+  start() {
+    if (this._running) return;
+    this._running = true;
+    this._last = performance.now();
+    const loop = (now) => {
+      if (!this._running) return;
+      const dt = Math.min(50, now - this._last) / 1000;
+      this._last = now;
+      this.t += dt;
+      if (this._anim) {
+        this._anim.t += dt;
+        if (this._anim.t >= this._anim.dur) {
+          this.printed = this._anim.layer + 1;
+          this._anim = null;
+          this.onProgress?.(this.printed, this.total);
+          if (this.printed >= this.total) {
+            this.done = true;
+            this.onDone?.();
+          }
+        }
+      }
+      this._draw();
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
+  }
+
+  /** 玩家触发：打印下一层（动画中或已完成时忽略） */
+  printNextLayer() {
+    if (this.done || this._anim) return;
+    this._anim = { layer: this.printed, t: 0, dur: 0.55 };
+  }
+
+  reset() {
+    this.printed = 0;
+    this.done = false;
+    this._anim = null;
+    this.onProgress?.(0, this.total);
+  }
+
+  stop() {
+    this._running = false;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = 0;
+  }
+
+  /* ----------------------------- 绘制 ----------------------------- */
+
+  _layerGeom() {
+    const baseY = this.h - 30;
+    const maxLayers = this.total;
+    const layerH = (baseY - 56) / maxLayers;
+    return { baseY, layerH, maxLayers };
+  }
+
+  _draw() {
+    const { ctx, w, h } = this;
+    ctx.clearRect(0, 0, w, h);
+    drawBg(ctx, w, h);
+    const cx = w / 2;
+    const { baseY, layerH, maxLayers } = this._layerGeom();
+
+    // 龙门机架
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180,200,255,0.3)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(cx - 78, 46, 156, baseY - 46);
+    ctx.beginPath(); ctx.moveTo(cx - 78, 52); ctx.lineTo(cx + 78, 52); ctx.stroke();
+    ctx.restore();
+    // 打印台
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(cx - 60, baseY, 120, 4);
+
+    // 已打印层
+    for (let i = 0; i < this.printed; i++) this._drawLayer(ctx, i, cx, baseY, layerH, maxLayers, 1, false);
+    // 正在打印的层（按进度从左到右显形）
+    if (this._anim) {
+      const p = Math.min(1, this._anim.t / this._anim.dur);
+      this._drawLayer(ctx, this._anim.layer, cx, baseY, layerH, maxLayers, p, true);
+    }
+
+    // 喷嘴
+    this._drawNozzle(ctx, cx, baseY, layerH, maxLayers);
+
+    // 标签 / 进度
+    if (this.done) {
+      label(ctx, '🎉 出炉！歪歪扭扭的小东西（俗称：垃圾）', cx, 22, GREEN, 12);
+    } else {
+      label(ctx, `点「打印下一层」· 第 ${this.printed}/${maxLayers} 层`, cx, 22, CYAN, 12);
+    }
+  }
+
+  _drawLayer(ctx, i, cx, baseY, layerH, maxLayers, fill, animating) {
+    const y = baseY - (i + 1) * layerH;
+    // 歪扭造型：每层宽度略随机 + 顶部整体向右倾
+    const wob = 1 + 0.15 * Math.sin(i * 2.3) + 0.10 * Math.sin(i * 0.7);
+    const r = 44 * wob * (1 - 0.10 * Math.sin((i / maxLayers) * Math.PI));
+    const lean = (i / maxLayers) * (i / maxLayers) * 7; // 越往上越歪
+    const xc = cx + lean;
+    const shade = 0.35 + 0.5 * (i / maxLayers);
+    ctx.save();
+    if (animating) {
+      ctx.beginPath();
+      roundRect(ctx, xc - r, y, r * 2 * fill, layerH + 1, 2);
+      ctx.clip();
+    }
+    ctx.fillStyle = `rgba(90,209,255,${shade})`;
+    if (animating) { ctx.shadowColor = CYAN; ctx.shadowBlur = 14; }
+    roundRect(ctx, xc - r, y, r * 2, layerH + 1, 2);
+    ctx.fill();
+    ctx.restore();
+    // 层线
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xc - r, y + layerH * 0.5); ctx.lineTo(xc + r, y + layerH * 0.5); ctx.stroke();
+  }
+
+  _drawNozzle(ctx, cx, baseY, layerH, maxLayers) {
+    let y, nx;
+    if (this.done) {
+      y = 56; nx = cx + 58; // 完工：喷头停到右上
+    } else if (this._anim) {
+      const layer = this._anim.layer;
+      const p = Math.min(1, this._anim.t / this._anim.dur);
+      const r = 44 * (1 - 0.10 * Math.sin((layer / maxLayers) * Math.PI));
+      y = baseY - (layer + 1) * layerH;
+      nx = cx + (layer / maxLayers) * (layer / maxLayers) * 7 - r + p * 2 * r;
+    } else {
+      // 空闲：悬在「下一层」位置轻轻浮动，提示该点这
+      const next = this.printed;
+      const r = 44 * (1 - 0.10 * Math.sin((next / maxLayers) * Math.PI));
+      y = baseY - (next + 1) * layerH + Math.sin(this.t * 3) * 2;
+      nx = cx + (next / maxLayers) * (next / maxLayers) * 7;
+    }
+    // 喷头
+    ctx.fillStyle = AMBER;
+    ctx.shadowColor = AMBER; ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(nx, y - 14);
+    ctx.lineTo(nx - 6, y - 4);
+    ctx.lineTo(nx + 6, y - 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // 正在挤料：落点高亮 + 细丝
+    if (this._anim) {
+      ctx.strokeStyle = 'rgba(255,180,84,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(nx, y - 4); ctx.lineTo(nx, y); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(nx, y, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}

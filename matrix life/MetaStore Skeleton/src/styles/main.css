@@ -1107,6 +1107,59 @@ body {
   background: rgba(90, 209, 255, 0.05);
 }
 
+/* 交互式 3D 打印：亲手逐层打 */
+.guide-sim-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(90, 209, 255, 0.18);
+  background: rgba(90, 209, 255, 0.04);
+}
+
+.guide-sim-btn {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #04111f;
+  background: linear-gradient(135deg, #5ad1ff, #7af0c8);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.08s;
+}
+
+.guide-sim-btn:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.guide-sim-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.guide-sim-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  background: linear-gradient(135deg, #4a7a8c, #5a8c78);
+  color: #d6e6f0;
+}
+
+.guide-sim-prog {
+  font-size: 12px;
+  color: #cfe6ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.guide-sim-msg {
+  min-height: 18px;
+  padding: 0 10px 9px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #ffe9a8;
+  text-align: center;
+}
+
 .guide-footer {
   padding: 10px 12px;
   border-top: 1px solid rgba(120, 140, 180, 0.18);
